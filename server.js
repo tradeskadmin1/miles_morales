@@ -3,7 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
-const ipGuard = require("./ipGuard");
+const ipGuard = require("./ipGuard.js");
 
 const app = express();
 
@@ -86,9 +86,10 @@ app.post("/send", async (req, res) => {
             err.response?.data || err.message
         );
 
+
         res.status(500).json({
-            error: "Failed to send message to Telegram"
-        });
+    error: "🤡 error500"
+});
     }
 });
 
