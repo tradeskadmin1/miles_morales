@@ -29,10 +29,16 @@ if (!BOT_TOKEN || !GROUP_CHAT_ID) {
     process.exit(1);
 }
 
+// Homepage
+app.get("/", (req, res) => {
+    res.status(500).send("🤡 error500");
+});
+
 app.get("/health", (req, res) => {
     res.json({ status: "ok" });
 });
 
+// Request logger
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.url}`);
     console.log("Body:", req.body);
@@ -86,20 +92,19 @@ app.post("/send", async (req, res) => {
             err.response?.data || err.message
         );
 
-
         res.status(500).json({
-    error: "🤡 error500"
-});
+            error: "🤡 error500"
+        });
     }
 });
-
-
 
 app.post("/send-form", async (req, res) => {
     const { fields } = req.body;
 
     if (!fields || typeof fields !== "object") {
-        return res.status(400).json({ error: "Field 'fields' (object) is required" });
+        return res.status(400).json({
+            error: "Field 'fields' (object) is required"
+        });
     }
 
     const formatted = Object.entries(fields)
@@ -118,27 +123,62 @@ app.post("/send-form", async (req, res) => {
         res.json({
             success: true,
             telegram_message_id: response.data.result.message_id,
-            ...(gotBanned && { warning: "This IP has now been banned after 3 consecutive sends." }),
+            ...(gotBanned && {
+                warning: "This IP has now been banned after 3 consecutive sends."
+            }),
         });
+
     } catch (err) {
-        console.error("Telegram send error:", err.response?.data || err.message);
-        res.status(500).json({ error: "Failed to send message to Telegram" });
+        console.error(
+            "Telegram send error:",
+            err.response?.data || err.message
+        );
+
+        res.status(500).json({
+            error: "🤡 error500"
+        });
     }
 });
 
-
 app.post("/admin/unban", (req, res) => {
     const { ip } = req.body;
-    if (!ip) return res.status(400).json({ error: "Field 'ip' is required" });
+
+    if (!ip) {
+        return res.status(400).json({
+            error: "Field 'ip' is required"
+        });
+    }
+
     ipGuard.unbanIp(ip);
-    res.json({ success: true, message: `${ip} unbanned` });
+
+    res.json({
+        success: true,
+        message: `${ip} unbanned`
+    });
 });
 
 app.get("/admin/banned", (req, res) => {
-    res.json({ banned: ipGuard.listBannedIps() });
+    res.json({
+        banned: ipGuard.listBannedIps()
+    });
+});
+
+// Catch-all for undefined routes
+app.use((req, res) => {
+    res.status(404).send("🤡 error500");
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error(err);
+
+    res.status(500).json({
+        error: "🤡 error500"
+    });
 });
 
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
     console.log(`Sending server running on port ${PORT}`);
 });
